@@ -1,0 +1,32 @@
+name: Deploy EchoNote
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create .env file
+        run: |
+          echo "PORT=5000" >> .env
+          echo "NODE_ENV=production" >> .env
+          echo "DB_HOST=db" >> .env
+          echo "DB_PORT=3306" >> .env
+          echo "DB_USER=echonote_user" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_NAME=echonote_db" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+          echo "JWT_EXPIRES_IN=7d" >> .env
+          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
+          echo "MAX_FILE_SIZE=50mb" >> .env
+          echo "UPLOAD_DIR=./server/uploads" >> .env
+
+      - name: Build & Run Docker
+        run: |
+          docker compose up -d --build

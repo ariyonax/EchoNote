@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Transcripts – EchoNote</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body>
+    <div class="app-layout">
+      <div id="sidebar-mount"></div>
+      <div class="main-content">
+        <header class="topbar">
+          <div style="display: flex; align-items: center; gap: 12px">
+            <button
+              id="menu-toggle"
+              class="btn btn-ghost btn-sm"
+              style="display: none; padding: 8px"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <span class="topbar-title">My Transcripts</span>
+          </div>
+          <div class="topbar-actions">
+            <a href="upload.html" class="btn btn-primary btn-sm">+ Upload</a>
+          </div>
+        </header>
+        <main class="page-content">
+          <div class="page-header">
+            <h1>Transcripts</h1>
+            <p>All your audio transcriptions in one place.</p>
+          </div>
+
+          <!-- Filters -->
+          <div
+            style="
+              display: flex;
+              gap: 12px;
+              margin-bottom: 1.5rem;
+              flex-wrap: wrap;
+            "
+          >
+            <select
+              id="category-filter"
+              class="input"
+              style="width: auto; min-width: 160px"
+            >
+              <option value="">All categories</option>
+            </select>
+            <button onclick="loadTranscripts()" class="btn btn-ghost btn-sm">
+              Refresh
+            </button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="transcripts-tbody">
+                <tr>
+                  <td
+                    colspan="4"
+                    style="
+                      text-align: center;
+                      padding: 2rem;
+                      color: var(--text-muted);
+                    "
+                  >
+                    Loading…
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div
+            id="pagination"
+            style="
+              display: flex;
+              gap: 8px;
+              justify-content: center;
+              margin-top: 1.5rem;
+            "
+          ></div>
+        </main>
+      </div>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script>
+      requireAuth();
+      document.getElementById("sidebar-mount").innerHTML =
+        renderSidebar("transcripts");
+
+      let currentPage = 1;
+      const limit = 10;
+
+      async function loadCategories() {
+        try {
+          const cats = await apiRequest("/transcripts/categories");
+          const sel = document.getElementById("category-filter");
+          cats.forEach((c) => {
+            const opt = document.createElement("option");
+            opt.value = c.category_name;
+            opt.textContent = c.category_name;
+            sel.appendChild(opt);
+          });
+        } catch {}
+      }
+
+      async function loadTranscripts(page = 1) {
+        currentPage = page;
+        const cat = document.getElementById("category-filter").value;
+        const tbody = document.getElementById("transcripts-tbody");
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">Loading…</td></tr>`;
+
+        try {
+          let url = `/transcripts?page=${page}&limit=${limit}`;
+          if (cat) url += `&category=${encodeURIComponent(cat)}`;
+          const data = await apiRequest(url);
+          const { transcripts, total } = data;
+
+          if (!transcripts.length) {
+            tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><p>No transcripts found. <a href="upload.html">Upload your first audio →</a></p></div></td></tr>`;
+            return;
+          }
+
+          tbody.innerHTML = transcripts
+            .map(
+              (t) => `
+                    <tr>
+                        <td>
+                            <div style="font-weight:500;">${t.title || t.original_name || "Untitled"}</div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${(t.excerpt || "").slice(0, 80)}…</div>
+                        </td>
+                        <td><span class="badge badge-neutral">${t.category_name || "—"}</span></td>
+                        <td class="text-sm text-muted">${formatDate(t.generated_at)}</td>
+                        <td>
+                            <div style="display:flex;gap:6px;">
+                                <a href="viewer.html?id=${t.transcript_id}" class="btn btn-ghost btn-sm">View</a>
+                                <button onclick="deleteTranscript(${t.transcript_id}, this)" class="btn btn-danger btn-sm">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`,
+            )
+            .join("");
+
+          // Pagination
+          const totalPages = Math.ceil(total / limit);
+          const pag = document.getElementById("pagination");
+          pag.innerHTML = "";
+          for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement("button");
+            btn.className = `btn ${i === page ? "btn-primary" : "btn-ghost"} btn-sm`;
+            btn.textContent = i;
+            btn.onclick = () => loadTranscripts(i);
+            pag.appendChild(btn);
+          }
+        } catch (err) {
+          showToast("Failed to load transcripts", "error");
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--danger);padding:2rem;">Failed to load</td></tr>`;
+        }
+      }
+
+      async function deleteTranscript(id, btn) {
+        if (!confirm("Delete this transcript permanently?")) return;
+        btn.disabled = true;
+        try {
+          await apiRequest(`/transcripts/${id}`, { method: "DELETE" });
+          showToast("Transcript deleted");
+          loadTranscripts(currentPage);
+        } catch (err) {
+          showToast("Delete failed", "error");
+          btn.disabled = false;
+        }
+      }
+
+      document
+        .getElementById("category-filter")
+        .addEventListener("change", () => loadTranscripts(1));
+
+      loadCategories();
+      loadTranscripts();
+    </script>
+  </body>
+</html>

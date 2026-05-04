@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign up – EchoNote</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div style="display: inline-flex; align-items: center; gap: 10px">
+          <div
+            style="
+              width: 36px;
+              height: 36px;
+              background: var(--accent);
+              border-radius: 8px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+          >
+            <svg viewBox="0 0 24 24" fill="#0B0F1A" width="20" height="20">
+              <path
+                d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2z"
+              />
+            </svg>
+          </div>
+          <span style="font-size: 1.25rem; font-weight: 600">EchoNote</span>
+        </div>
+        <h2>Create your account</h2>
+        <p>Start transcribing your audio in seconds.</p>
+      </div>
+
+      <form id="signup-form">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input
+            type="text"
+            id="username"
+            class="input"
+            placeholder="johndoe"
+            required
+            minlength="3"
+            maxlength="50"
+            autocomplete="username"
+          />
+        </div>
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input
+            type="email"
+            id="email"
+            class="input"
+            placeholder="you@example.com"
+            required
+            autocomplete="email"
+          />
+        </div>
+        <div class="form-group">
+          <label for="password"
+            >Password
+            <span style="color: var(--text-muted); font-size: 12px"
+              >(min 6 chars)</span
+            ></label
+          >
+          <input
+            type="password"
+            id="password"
+            class="input"
+            placeholder="Create a strong password"
+            required
+            minlength="6"
+            autocomplete="new-password"
+          />
+        </div>
+        <button
+          type="submit"
+          id="submit-btn"
+          class="btn btn-primary w-full mt-2"
+          style="justify-content: center"
+        >
+          Create account
+        </button>
+      </form>
+
+      <div class="auth-divider mt-2 mb-2">or</div>
+
+      <p
+        style="
+          text-align: center;
+          font-size: 14px;
+          color: var(--text-secondary);
+        "
+      >
+        Already have an account? <a href="login.html">Log in</a>
+      </p>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script>
+      if (auth.isLoggedIn()) window.location.href = "/html/dashboard.html";
+
+      document
+        .getElementById("signup-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const btn = document.getElementById("submit-btn");
+          btn.disabled = true;
+          btn.textContent = "Creating account…";
+
+          try {
+            const data = await apiRequest("/auth/signup", {
+              method: "POST",
+              body: JSON.stringify({
+                username: document.getElementById("username").value.trim(),
+                email: document.getElementById("email").value.trim(),
+                password: document.getElementById("password").value,
+              }),
+            });
+            auth.setSession(data.token, data.user);
+            showToast("Account created!");
+            setTimeout(
+              () => (window.location.href = "/html/dashboard.html"),
+              500,
+            );
+          } catch (err) {
+            showToast(err.message || "Signup failed", "error");
+            btn.disabled = false;
+            btn.textContent = "Create account";
+          }
+        });
+    </script>
+  </body>
+</html>

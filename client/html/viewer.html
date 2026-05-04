@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transcript – EchoNote</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body>
+    <div class="app-layout">
+      <div id="sidebar-mount"></div>
+      <div class="main-content">
+        <header class="topbar">
+          <div style="display: flex; align-items: center; gap: 12px">
+            <button
+              id="menu-toggle"
+              class="btn btn-ghost btn-sm"
+              style="display: none; padding: 8px"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <a href="transcripts.html" class="btn btn-ghost btn-sm">← Back</a>
+            <span class="topbar-title" id="page-title">Transcript</span>
+          </div>
+          <div class="topbar-actions" id="action-buttons"></div>
+        </header>
+        <main class="page-content" style="max-width: 860px">
+          <div
+            id="loading"
+            style="text-align: center; padding: 4rem; color: var(--text-muted)"
+          >
+            Loading transcript…
+          </div>
+          <div id="transcript-view" class="hidden">
+            <!-- Meta bar -->
+            <div
+              style="
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                margin-bottom: 1.5rem;
+                flex-wrap: wrap;
+              "
+            >
+              <span class="badge badge-neutral" id="meta-category"></span>
+              <span class="text-sm text-muted" id="meta-date"></span>
+              <span class="text-sm text-muted" id="meta-file"></span>
+            </div>
+
+            <!-- Edit title -->
+            <div style="margin-bottom: 1rem">
+              <input
+                type="text"
+                id="title-input"
+                class="input"
+                style="
+                  font-size: 1.3rem;
+                  font-weight: 600;
+                  background: transparent;
+                  border-color: transparent;
+                  padding: 4px 0;
+                "
+                placeholder="Untitled transcript"
+              />
+            </div>
+
+            <!-- Category selector -->
+            <div
+              style="
+                display: flex;
+                gap: 12px;
+                margin-bottom: 1.5rem;
+                align-items: center;
+              "
+            >
+              <label style="font-size: 13px; color: var(--text-secondary)"
+                >Category:</label
+              >
+              <select
+                id="category-select"
+                class="input"
+                style="width: auto"
+              ></select>
+              <button id="save-btn" class="btn btn-primary btn-sm">
+                Save changes
+              </button>
+            </div>
+
+            <!-- Transcript body -->
+            <div
+              class="transcript-body"
+              id="transcript-text"
+              contenteditable="true"
+            ></div>
+
+            <!-- Download actions -->
+            <div
+              style="
+                display: flex;
+                gap: 10px;
+                margin-top: 1.5rem;
+                flex-wrap: wrap;
+              "
+            >
+              <button id="copy-btn" class="btn btn-ghost btn-sm">
+                📋 Copy text
+              </button>
+              <a id="download-txt" class="btn btn-ghost btn-sm"
+                >⬇ Download TXT</a
+              >
+              <a id="download-pdf" class="btn btn-ghost btn-sm"
+                >📄 Download PDF</a
+              >
+            </div>
+          </div>
+          <div id="error-view" class="hidden empty-state">
+            <p>Transcript not found.</p>
+            <a href="transcripts.html" class="btn btn-ghost mt-2"
+              >← Back to transcripts</a
+            >
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script>
+      requireAuth();
+      document.getElementById("sidebar-mount").innerHTML =
+        renderSidebar("transcripts");
+
+      const params = new URLSearchParams(window.location.search);
+      const transcriptId = params.get("id");
+      let transcript = null;
+
+      async function loadTranscript() {
+        try {
+          transcript = await apiRequest(`/transcripts/${transcriptId}`);
+
+          document.getElementById("loading").classList.add("hidden");
+          document.getElementById("transcript-view").classList.remove("hidden");
+          document.getElementById("page-title").textContent =
+            transcript.title || "Transcript";
+
+          document.getElementById("title-input").value = transcript.title || "";
+          document.getElementById("transcript-text").textContent =
+            transcript.transcript_text || "";
+          document.getElementById("meta-category").textContent =
+            transcript.category_name || "Uncategorized";
+          document.getElementById("meta-date").textContent = formatDate(
+            transcript.generated_at,
+          );
+          document.getElementById("meta-file").textContent =
+            transcript.original_name || "";
+
+          document.getElementById("download-txt").href =
+            `/api/transcripts/${transcriptId}/download/txt`;
+          document.getElementById("download-pdf").href =
+            `/api/transcripts/${transcriptId}/download/pdf`;
+
+          // Load categories
+          const cats = await apiRequest("/transcripts/categories");
+          const sel = document.getElementById("category-select");
+          cats.forEach((c) => {
+            const opt = document.createElement("option");
+            opt.value = c.category_id;
+            opt.textContent = c.category_name;
+            if (c.category_name === transcript.category_name)
+              opt.selected = true;
+            sel.appendChild(opt);
+          });
+        } catch (err) {
+          document.getElementById("loading").classList.add("hidden");
+          document.getElementById("error-view").classList.remove("hidden");
+        }
+      }
+
+      document
+        .getElementById("save-btn")
+        .addEventListener("click", async () => {
+          const btn = document.getElementById("save-btn");
+          btn.disabled = true;
+          btn.textContent = "Saving…";
+          try {
+            await apiRequest(`/transcripts/${transcriptId}`, {
+              method: "PUT",
+              body: JSON.stringify({
+                title: document.getElementById("title-input").value,
+                transcript_text:
+                  document.getElementById("transcript-text").textContent,
+                category_id: document.getElementById("category-select").value,
+              }),
+            });
+            showToast("Transcript saved");
+          } catch (err) {
+            showToast("Save failed", "error");
+          } finally {
+            btn.disabled = false;
+            btn.textContent = "Save changes";
+          }
+        });
+
+      document.getElementById("copy-btn").addEventListener("click", () => {
+        copyToClipboard(document.getElementById("transcript-text").textContent);
+      });
+
+      if (transcriptId) loadTranscript();
+      else {
+        document.getElementById("loading").classList.add("hidden");
+        document.getElementById("error-view").classList.remove("hidden");
+      }
+    </script>
+  </body>
+</html>
