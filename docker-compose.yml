@@ -6,10 +6,10 @@ services:
     container_name: echonote-db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-071204}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: echonote_db
       MYSQL_USER: echonote_user
-      MYSQL_PASSWORD: ${DB_PASSWORD:-071204}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -48,7 +48,7 @@ services:
       DB_HOST: db
       DB_PORT: 3306
       DB_USER: echonote_user
-      DB_PASSWORD: ${DB_PASSWORD:-071204}
+      DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: echonote_db
       JWT_SECRET: ${JWT_SECRET:-echonote_secret_key_123}
       JWT_EXPIRES_IN: 7d
