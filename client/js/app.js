@@ -43,7 +43,7 @@ async function apiRequest(endpoint, options = {}) {
         const res = await fetch(`${API_BASE}${endpoint}`, config);
         if (res.status === 401) {
             auth.clearSession();
-            window.location.href = '/html/login.html';
+            window.location.href = '/login.html';
             return;
         }
         const data = await res.json().catch(() => ({}));
@@ -120,7 +120,7 @@ function statusBadge(status) {
 // ── Guard: require login ──
 function requireAuth() {
     if (!auth.isLoggedIn()) {
-        window.location.href = '/html/login.html';
+        window.location.href = '/login.html';
         return false;
     }
     return true;
@@ -128,7 +128,7 @@ function requireAuth() {
 
 function requireAdmin() {
     if (!auth.isAdmin()) {
-        window.location.href = '/html/dashboard.html';
+        window.location.href = '/dashboard.html';
         return false;
     }
     return true;
@@ -160,7 +160,7 @@ function populateSidebarUser() {
 // ── Logout ──
 function logout() {
     auth.clearSession();
-    window.location.href = '/html/login.html';
+    window.location.href = '/login.html';
 }
 
 // ── Mobile sidebar toggle ──

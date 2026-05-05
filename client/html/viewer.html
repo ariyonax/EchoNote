@@ -1,226 +1,445 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Transcript – EchoNote</title>
-    <link rel="stylesheet" href="../css/styles.css" />
-  </head>
-  <body>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <style>
+        .viewer-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .meta-item {
+            background: var(--surface-2, rgba(255,255,255,0.03));
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+        }
+        .meta-item .meta-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 4px;
+        }
+        .meta-item .meta-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .title-input {
+            width: 100%;
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-primary);
+            padding: 4px 0;
+            outline: none;
+            transition: border-color 0.2s;
+            margin-bottom: 1rem;
+        }
+        .title-input:focus {
+            border-bottom-color: var(--primary);
+        }
+        .transcript-editor {
+            background: var(--surface-2, rgba(255,255,255,0.02));
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            min-height: 300px;
+            font-size: 15px;
+            line-height: 1.8;
+            color: var(--text-primary);
+            outline: none;
+            white-space: pre-wrap;
+            word-break: break-word;
+            transition: border-color 0.2s;
+        }
+        .transcript-editor:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+        }
+        .editor-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .word-counter {
+            font-size: 12px;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+        }
+        .word-counter span {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .format-btn {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .format-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .controls-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .save-indicator {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+        .save-indicator.saved { color: #22c55e; }
+        .save-indicator.saving { color: var(--primary); }
+    </style>
+</head>
+<body>
     <div class="app-layout">
-      <div id="sidebar-mount"></div>
-      <div class="main-content">
-        <header class="topbar">
-          <div style="display: flex; align-items: center; gap: 12px">
-            <button
-              id="menu-toggle"
-              class="btn btn-ghost btn-sm"
-              style="display: none; padding: 8px"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            </button>
-            <a href="transcripts.html" class="btn btn-ghost btn-sm">← Back</a>
-            <span class="topbar-title" id="page-title">Transcript</span>
-          </div>
-          <div class="topbar-actions" id="action-buttons"></div>
-        </header>
-        <main class="page-content" style="max-width: 860px">
-          <div
-            id="loading"
-            style="text-align: center; padding: 4rem; color: var(--text-muted)"
-          >
-            Loading transcript…
-          </div>
-          <div id="transcript-view" class="hidden">
-            <!-- Meta bar -->
-            <div
-              style="
-                display: flex;
-                gap: 12px;
-                align-items: center;
-                margin-bottom: 1.5rem;
-                flex-wrap: wrap;
-              "
-            >
-              <span class="badge badge-neutral" id="meta-category"></span>
-              <span class="text-sm text-muted" id="meta-date"></span>
-              <span class="text-sm text-muted" id="meta-file"></span>
-            </div>
+        <div id="sidebar-mount"></div>
+        <div class="main-content">
+            <header class="topbar">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <button id="menu-toggle" class="btn btn-ghost btn-sm" style="display:none;padding:8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                    <a href="/transcripts.html" class="btn btn-ghost btn-sm">← Back</a>
+                    <span class="topbar-title" id="page-title">Transcript</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span class="save-indicator" id="save-indicator"></span>
+                    <button id="save-btn" class="btn btn-primary btn-sm">💾 Save</button>
+                </div>
+            </header>
 
-            <!-- Edit title -->
-            <div style="margin-bottom: 1rem">
-              <input
-                type="text"
-                id="title-input"
-                class="input"
-                style="
-                  font-size: 1.3rem;
-                  font-weight: 600;
-                  background: transparent;
-                  border-color: transparent;
-                  padding: 4px 0;
-                "
-                placeholder="Untitled transcript"
-              />
-            </div>
+            <main class="page-content" style="max-width:860px;">
+                <div id="loading" style="text-align:center;padding:4rem;color:var(--text-muted);">
+                    Loading transcript…
+                </div>
 
-            <!-- Category selector -->
-            <div
-              style="
-                display: flex;
-                gap: 12px;
-                margin-bottom: 1.5rem;
-                align-items: center;
-              "
-            >
-              <label style="font-size: 13px; color: var(--text-secondary)"
-                >Category:</label
-              >
-              <select
-                id="category-select"
-                class="input"
-                style="width: auto"
-              ></select>
-              <button id="save-btn" class="btn btn-primary btn-sm">
-                Save changes
-              </button>
-            </div>
+                <div id="transcript-view" class="hidden">
 
-            <!-- Transcript body -->
-            <div
-              class="transcript-body"
-              id="transcript-text"
-              contenteditable="true"
-            ></div>
+                    <!-- Meta Stats Grid -->
+                    <div class="meta-grid" id="meta-grid">
+                        <div class="meta-item">
+                            <div class="meta-label">Category</div>
+                            <div class="meta-value" id="meta-category">—</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Date</div>
+                            <div class="meta-value" id="meta-date">—</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Words</div>
+                            <div class="meta-value" id="meta-words">—</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Characters</div>
+                            <div class="meta-value" id="meta-chars">—</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Audio File</div>
+                            <div class="meta-value" id="meta-file" style="font-size:12px;word-break:break-all;">—</div>
+                        </div>
+                    </div>
 
-            <!-- Download actions -->
-            <div
-              style="
-                display: flex;
-                gap: 10px;
-                margin-top: 1.5rem;
-                flex-wrap: wrap;
-              "
-            >
-              <button id="copy-btn" class="btn btn-ghost btn-sm">
-                📋 Copy text
-              </button>
-              <a id="download-txt" class="btn btn-ghost btn-sm"
-                >⬇ Download TXT</a
-              >
-              <a id="download-pdf" class="btn btn-ghost btn-sm"
-                >📄 Download PDF</a
-              >
-            </div>
-          </div>
-          <div id="error-view" class="hidden empty-state">
-            <p>Transcript not found.</p>
-            <a href="transcripts.html" class="btn btn-ghost mt-2"
-              >← Back to transcripts</a
-            >
-          </div>
-        </main>
-      </div>
+                    <!-- Viewer Card -->
+                    <div class="viewer-card">
+                        <!-- Editable Title -->
+                        <input type="text" id="title-input" class="title-input" placeholder="Click to edit title…" />
+
+                        <!-- Controls Row -->
+                        <div class="controls-row">
+                            <label style="font-size:13px;color:var(--text-secondary);">Category:</label>
+                            <select id="category-select" class="input" style="width:auto;padding:6px 12px;"></select>
+                        </div>
+
+                        <!-- Editor Toolbar -->
+                        <div class="editor-toolbar">
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <button class="format-btn" onclick="formatText('paragraphs')">📄 Format Paragraphs</button>
+                                <button class="format-btn" onclick="formatText('sentences')">✂️ Split Sentences</button>
+                                <button class="format-btn" onclick="formatText('clean')">🧹 Clean Text</button>
+                            </div>
+                            <div class="word-counter">
+                                <span id="live-words">0</span> words · <span id="live-chars">0</span> chars
+                            </div>
+                        </div>
+
+                        <!-- Editable Transcript -->
+                        <div id="transcript-text" class="transcript-editor" contenteditable="true" 
+                             spellcheck="true" placeholder="Transcript text will appear here…"></div>
+                    </div>
+
+                    <!-- Action Bar -->
+                    <div class="action-bar">
+                        <button id="copy-btn" class="btn btn-ghost btn-sm">📋 Copy text</button>
+                        <button id="download-txt-btn" class="btn btn-ghost btn-sm">⬇ Download TXT</button>
+                        <button id="download-pdf-btn" class="btn btn-ghost btn-sm">📄 Download PDF</button>
+                        <button id="delete-btn" class="btn btn-sm" style="margin-left:auto;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);">🗑 Delete</button>
+                    </div>
+                </div>
+
+                <div id="error-view" class="hidden empty-state">
+                    <p>Transcript not found.</p>
+                    <a href="/transcripts.html" class="btn btn-ghost mt-2">← Back to transcripts</a>
+                </div>
+            </main>
+        </div>
     </div>
 
-    <script src="../js/app.js"></script>
-    <script src="../js/sidebar.js"></script>
+    <script src="/js/app.js"></script>
+    <script src="/js/sidebar.js"></script>
     <script>
-      requireAuth();
-      document.getElementById("sidebar-mount").innerHTML =
-        renderSidebar("transcripts");
+        requireAuth();
+        document.getElementById('sidebar-mount').innerHTML = renderSidebar('transcripts');
 
-      const params = new URLSearchParams(window.location.search);
-      const transcriptId = params.get("id");
-      let transcript = null;
+        const params = new URLSearchParams(window.location.search);
+        const transcriptId = params.get('id');
+        let transcript = null;
+        let autoSaveTimer = null;
 
-      async function loadTranscript() {
-        try {
-          transcript = await apiRequest(`/transcripts/${transcriptId}`);
+        // ── Format Functions ─────────────────────────
+        function formatText(type) {
+            const el = document.getElementById('transcript-text');
+            let text = el.innerText.trim();
+            if (!text) return;
 
-          document.getElementById("loading").classList.add("hidden");
-          document.getElementById("transcript-view").classList.remove("hidden");
-          document.getElementById("page-title").textContent =
-            transcript.title || "Transcript";
+            if (type === 'paragraphs') {
+                // Split into paragraphs every ~3 sentences
+                const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+                const chunks = [];
+                for (let i = 0; i < sentences.length; i += 3) {
+                    chunks.push(sentences.slice(i, i + 3).join(' ').trim());
+                }
+                text = chunks.join('\n\n');
+            } else if (type === 'sentences') {
+                // One sentence per line
+                text = text.replace(/([.!?])\s+/g, '$1\n').trim();
+            } else if (type === 'clean') {
+                // Remove extra spaces, fix common issues
+                text = text
+                    .replace(/\s+/g, ' ')
+                    .replace(/\s([,.!?])/g, '$1')
+                    .replace(/([a-z])([A-Z])/g, '$1. $2')
+                    .trim();
+            }
 
-          document.getElementById("title-input").value = transcript.title || "";
-          document.getElementById("transcript-text").textContent =
-            transcript.transcript_text || "";
-          document.getElementById("meta-category").textContent =
-            transcript.category_name || "Uncategorized";
-          document.getElementById("meta-date").textContent = formatDate(
-            transcript.generated_at,
-          );
-          document.getElementById("meta-file").textContent =
-            transcript.original_name || "";
-
-          document.getElementById("download-txt").href =
-            `/api/transcripts/${transcriptId}/download/txt`;
-          document.getElementById("download-pdf").href =
-            `/api/transcripts/${transcriptId}/download/pdf`;
-
-          // Load categories
-          const cats = await apiRequest("/transcripts/categories");
-          const sel = document.getElementById("category-select");
-          cats.forEach((c) => {
-            const opt = document.createElement("option");
-            opt.value = c.category_id;
-            opt.textContent = c.category_name;
-            if (c.category_name === transcript.category_name)
-              opt.selected = true;
-            sel.appendChild(opt);
-          });
-        } catch (err) {
-          document.getElementById("loading").classList.add("hidden");
-          document.getElementById("error-view").classList.remove("hidden");
+            el.innerText = text;
+            updateCounter();
+            setSaveIndicator('unsaved');
         }
-      }
 
-      document
-        .getElementById("save-btn")
-        .addEventListener("click", async () => {
-          const btn = document.getElementById("save-btn");
-          btn.disabled = true;
-          btn.textContent = "Saving…";
-          try {
-            await apiRequest(`/transcripts/${transcriptId}`, {
-              method: "PUT",
-              body: JSON.stringify({
-                title: document.getElementById("title-input").value,
-                transcript_text:
-                  document.getElementById("transcript-text").textContent,
-                category_id: document.getElementById("category-select").value,
-              }),
-            });
-            showToast("Transcript saved");
-          } catch (err) {
-            showToast("Save failed", "error");
-          } finally {
-            btn.disabled = false;
-            btn.textContent = "Save changes";
-          }
+        // ── Word / Char Counter ───────────────────────
+        function updateCounter() {
+            const text = document.getElementById('transcript-text').innerText.trim();
+            const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+            const chars = text.length;
+            document.getElementById('live-words').textContent = words.toLocaleString();
+            document.getElementById('live-chars').textContent = chars.toLocaleString();
+        }
+
+        // ── Save Indicator ────────────────────────────
+        function setSaveIndicator(state) {
+            const el = document.getElementById('save-indicator');
+            if (state === 'saved') { el.textContent = '✓ Saved'; el.className = 'save-indicator saved'; }
+            else if (state === 'saving') { el.textContent = 'Saving…'; el.className = 'save-indicator saving'; }
+            else { el.textContent = '● Unsaved'; el.className = 'save-indicator'; }
+        }
+
+        // ── Auto Save ─────────────────────────────────
+        document.getElementById('transcript-text').addEventListener('input', () => {
+            updateCounter();
+            setSaveIndicator('unsaved');
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => saveTranscript(true), 3000);
         });
 
-      document.getElementById("copy-btn").addEventListener("click", () => {
-        copyToClipboard(document.getElementById("transcript-text").textContent);
-      });
+        document.getElementById('title-input').addEventListener('input', () => {
+            setSaveIndicator('unsaved');
+            document.getElementById('page-title').textContent = document.getElementById('title-input').value || 'Transcript';
+        });
 
-      if (transcriptId) loadTranscript();
-      else {
-        document.getElementById("loading").classList.add("hidden");
-        document.getElementById("error-view").classList.remove("hidden");
-      }
+        // ── Load Transcript ───────────────────────────
+        async function loadTranscript() {
+            try {
+                transcript = await apiRequest(`/transcripts/${transcriptId}`);
+
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('transcript-view').classList.remove('hidden');
+
+                const title = transcript.title || 'Untitled';
+                document.getElementById('page-title').textContent = title;
+                document.getElementById('title-input').value = title;
+                document.getElementById('transcript-text').innerText = transcript.transcript_text || '';
+
+                // Meta stats
+                const wordCount = transcript.transcript_text
+                    ? transcript.transcript_text.split(/\s+/).filter(Boolean).length : 0;
+                const charCount = transcript.transcript_text ? transcript.transcript_text.length : 0;
+
+                document.getElementById('meta-category').textContent = transcript.category_name || 'Uncategorized';
+                document.getElementById('meta-date').textContent = formatDate(transcript.generated_at);
+                document.getElementById('meta-words').textContent = wordCount.toLocaleString();
+                document.getElementById('meta-chars').textContent = charCount.toLocaleString();
+                document.getElementById('meta-file').textContent = transcript.original_name || 'N/A';
+
+                document.getElementById('live-words').textContent = wordCount.toLocaleString();
+                document.getElementById('live-chars').textContent = charCount.toLocaleString();
+
+                // Load categories
+                const cats = await apiRequest('/transcripts/categories');
+                const sel = document.getElementById('category-select');
+                cats.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.category_id;
+                    opt.textContent = c.category_name;
+                    if (c.category_name === transcript.category_name) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+
+                setSaveIndicator('saved');
+            } catch (err) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error-view').classList.remove('hidden');
+            }
+        }
+
+        // ── Save Transcript ───────────────────────────
+        async function saveTranscript(auto = false) {
+            const btn = document.getElementById('save-btn');
+            setSaveIndicator('saving');
+            if (!auto) { btn.disabled = true; btn.textContent = 'Saving…'; }
+            try {
+                await apiRequest(`/transcripts/${transcriptId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        title: document.getElementById('title-input').value,
+                        transcript_text: document.getElementById('transcript-text').innerText,
+                        category_id: document.getElementById('category-select').value
+                    })
+                });
+                setSaveIndicator('saved');
+                if (!auto) showToast('✓ Transcript saved');
+
+                // Update meta words/chars after save
+                const text = document.getElementById('transcript-text').innerText.trim();
+                const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+                document.getElementById('meta-words').textContent = words.toLocaleString();
+                document.getElementById('meta-chars').textContent = text.length.toLocaleString();
+            } catch (err) {
+                setSaveIndicator('unsaved');
+                if (!auto) showToast('Save failed', 'error');
+            } finally {
+                if (!auto) { btn.disabled = false; btn.textContent = '💾 Save'; }
+            }
+        }
+
+        // ── Download TXT ──────────────────────────────
+        document.getElementById('download-txt-btn').addEventListener('click', async () => {
+            try {
+                const token = auth.getToken();
+                const res = await fetch(`/api/transcripts/${transcriptId}/download/txt`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Download failed');
+                const blob = await res.blob();
+                const title = document.getElementById('title-input').value || 'transcript';
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${title}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('TXT downloaded!');
+            } catch (err) {
+                showToast('Download failed', 'error');
+            }
+        });
+
+        // ── Download PDF ──────────────────────────────
+        document.getElementById('download-pdf-btn').addEventListener('click', async () => {
+            try {
+                const token = auth.getToken();
+                const res = await fetch(`/api/transcripts/${transcriptId}/download/pdf`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Download failed');
+                const blob = await res.blob();
+                const title = document.getElementById('title-input').value || 'transcript';
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${title}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('PDF downloaded!');
+            } catch (err) {
+                showToast('Download failed', 'error');
+            }
+        });
+
+        // ── Copy ──────────────────────────────────────
+        document.getElementById('copy-btn').addEventListener('click', () => {
+            copyToClipboard(document.getElementById('transcript-text').innerText);
+            showToast('Copied to clipboard!');
+        });
+
+        // ── Save Button ───────────────────────────────
+        document.getElementById('save-btn').addEventListener('click', () => saveTranscript(false));
+
+        // ── Delete ────────────────────────────────────
+        document.getElementById('delete-btn').addEventListener('click', async () => {
+            if (!confirm('Delete this transcript permanently?')) return;
+            try {
+                await apiRequest(`/transcripts/${transcriptId}`, { method: 'DELETE' });
+                showToast('Transcript deleted');
+                setTimeout(() => window.location.href = '/transcripts.html', 1000);
+            } catch (err) {
+                showToast('Delete failed', 'error');
+            }
+        });
+
+        if (transcriptId) loadTranscript();
+        else {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error-view').classList.remove('hidden');
+        }
     </script>
-  </body>
+</body>
 </html>
