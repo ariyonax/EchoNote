@@ -7,6 +7,9 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 const logger = require('./config/logger');
 
+// ✅ Metrics
+const { promClient, httpRequestDuration, httpRequestTotal } = require('./config/metrics');
+
 const authRoutes = require('./routes/auth');
 const audioRoutes = require('./routes/audio');
 const transcriptRoutes = require('./routes/transcripts');
@@ -24,7 +27,7 @@ app.use(cors({
 
 // Rate limiting
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 15 * 60 * 1000,
     max: 100,
     message: { error: 'Too many requests, please try again later.' }
 });
@@ -39,6 +42,22 @@ app.use(morgan('combined', {
     stream: { write: (msg) => logger.info(msg.trim()) }
 }));
 
+// ✅ Metrics middleware — tracks every request
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = (Date.now() - start) / 1000;
+        const route = req.route?.path || req.path;
+        httpRequestDuration
+            .labels(req.method, route, res.statusCode)
+            .observe(duration);
+        httpRequestTotal
+            .labels(req.method, route, res.statusCode)
+            .inc();
+    });
+    next();
+});
+
 // Serve static frontend files
 app.use(express.static(path.join(__dirname, '../client')));
 app.use(express.static(path.join(__dirname, '../client/html')));
@@ -50,6 +69,16 @@ app.use('/api/audio', audioRoutes);
 app.use('/api/transcripts', transcriptRoutes);
 app.use('/api/admin', adminRoutes);
 
+// ✅ Metrics endpoint — Prometheus scrapes this
+app.get('/api/metrics', async (req, res) => {
+    try {
+        res.set('Content-Type', promClient.register.contentType);
+        res.end(await promClient.register.metrics());
+    } catch (err) {
+        res.status(500).end(err);
+    }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({
@@ -60,7 +89,7 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Serve frontend for all non-API routes (SPA fallback)
+// Serve frontend for all non-API routes
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
         res.sendFile(path.join(__dirname, '../client/html/index.html'));

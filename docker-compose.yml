@@ -53,6 +53,40 @@ services:
       JWT_SECRET: ${JWT_SECRET:-echonote_secret_key_123}
       JWT_EXPIRES_IN: 7d
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      prometheus:
+    image: prom/prometheus:latest
+    container_name: echonote-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - echonote-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: echonote-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - echonote-net
+    depends_on:
+      - prometheus
+
+volumes:
+  db_data:
+  uploads_data:
+  logs_data:
+  prometheus_data:
+  grafana_data:
     volumes:
       - uploads_data:/app/server/uploads
       - logs_data:/app/logs
