@@ -4,12 +4,12 @@ services:
   db:
     image: mysql:8.0
     container_name: echonote-db
-    restart: always
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-changeme}
       MYSQL_DATABASE: echonote_db
       MYSQL_USER: echonote_user
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-changeme}
     volumes:
       - db_data:/var/lib/mysql
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -18,42 +18,43 @@ services:
     networks:
       - echonote-net
     healthcheck:
-      test:
-        [
-          "CMD",
-          "mysqladmin",
-          "ping",
-          "-h",
-          "localhost",
-          "-u",
-          "echonote_user",
-          "-p071204",
-        ]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "echonote_user"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   backend:
-    build: .
+    image: ariyonax/echonote:latest
     container_name: echonote-backend
-    restart: always
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "5000:5000"
     environment:
       NODE_ENV: production
       PORT: 5000
       DB_HOST: db
       DB_PORT: 3306
       DB_USER: echonote_user
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
       DB_NAME: echonote_db
-      JWT_SECRET: ${JWT_SECRET:-echonote_secret_key_123}
+      JWT_SECRET: ${JWT_SECRET:-changeme}
       JWT_EXPIRES_IN: 7d
       GROQ_API_KEY: ${GROQ_API_KEY:-}
-      prometheus:
+    volumes:
+      - uploads_data:/app/server/uploads
+      - logs_data:/app/logs
+    ports:
+      - "5000:5000"
+    networks:
+      - echonote-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  prometheus:
     image: prom/prometheus:latest
     container_name: echonote-prometheus
     restart: unless-stopped
@@ -78,8 +79,6 @@ services:
       - "3000:3000"
     networks:
       - echonote-net
-    depends_on:
-      - prometheus
 
 volumes:
   db_data:
@@ -87,16 +86,6 @@ volumes:
   logs_data:
   prometheus_data:
   grafana_data:
-    volumes:
-      - uploads_data:/app/server/uploads
-      - logs_data:/app/logs
-    networks:
-      - echonote-net
-
-volumes:
-  db_data:
-  uploads_data:
-  logs_data:
 
 networks:
   echonote-net:
