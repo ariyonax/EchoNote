@@ -1,4 +1,4 @@
-# 🎙️ EchoNote – AI Voice Notes & Transcription Platform
+
 
 > A full-stack cloud-native web application for converting audio recordings into searchable, organized transcripts using AI.
 
